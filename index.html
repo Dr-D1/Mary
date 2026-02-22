@@ -1,63 +1,65 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>YMY COIN - تسجيل الدخول</title>
     <style>
-        /* أنماط أساسية لواجهة التسجيل */
-        html, body { height: 100%; margin: 0; font-family: 'Cairo', Arial, sans-serif; }
+        /* --- General Styles --- */
+        html, body { height: 100%; margin: 0; overflow-y: auto; font-family: 'Cairo', Arial, sans-serif; }
         body {
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
+            justify-content: center; /* Center vertically */
             align-items: center;
             background: #333;
         }
         button { cursor: pointer; font-family: inherit; }
+
+        /* --- Page Container for Centering --- */
         .page {
             width: 100%; max-width: 450px;
-            flex-grow: 1;
-            position: relative;
             background: #f0f0f0;
             display: flex;
             flex-direction: column;
             box-shadow: 0 0 20px rgba(0,0,0,.5);
+            border-radius: 10px; /* Optional: for better look */
         }
+
+        /* --- Overlay for Login Form --- */
         .overlay {
-            position: absolute; inset: 0; background: rgba(0,0,0,.7);
-            color: white; z-index: 10; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box;
+            color: #333; /* Darker text for light background */
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+            padding: 30px 20px; box-sizing: border-box;
         }
+        .overlay h1 { color: #000; }
         .overlay button { padding: 15px 30px; font-size: 22px; border: none; border-radius: 10px; background: #ffc107; margin-top: 15px; }
-        #start-screen .button-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center;}
-        #start-screen .button-group button { font-size: 18px; padding: 12px 20px; margin-top: 0; }
+
+        .button-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center;}
+        .button-group button { font-size: 18px; padding: 12px 20px; margin-top: 0; }
+
+        /* --- Input Fields --- */
         .input-field { padding: 10px; font-size: 18px; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 10px; text-align: center; direction: ltr; width: 80%; }
         #start-btn:disabled { background: #999; cursor: not-allowed; }
-        #validation-error { color: #ffc107; font-size: 14px; height: 16px; margin-bottom: 5px; }
-        #game-board { position: relative; flex-grow: 1; background: lightpink; overflow: hidden; }
+        #validation-error { color: #dc3545; font-size: 14px; height: 16px; margin-bottom: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<!-- صفحة التسجيل -->
-<div id="registration-page" class="page">
-    <div id="game-board">
-        <div id="start-screen" class="overlay">
-            <h1>إطعام مريومة</h1>
-            <p>سجّل الدخول أو أنشئ حساباً لبدء اللعب</p>
-            <div id="validation-error"></div>
-            <input id="insta-user" class="input-field" placeholder="يوزر الانستغرام (@user)" maxlength="30">
-            <input type="text" id="private-id" class="input-field" placeholder="الرمز">
-            <div class="button-group">
-                <button id="start-btn" disabled>دخول / تسجيل</button>
-            </div>
-            <p style="font-size: 12px; color: #ccc; margin-top: 20px;">
-                ملاحظة: سيتم توجيهك للعبة بعد تسجيل الدخول.
-            </p>
+<div id="register-container" class="page">
+    <div id="start-screen" class="overlay">
+        <h1>إطعام مريومة</h1>
+        <p>سجّل الدخول أو أنشئ حساباً للمتابعة</p>
+        <div id="validation-error"></div>
+        <input id="insta-user" class="input-field" placeholder="يوزر الانستغرام (@user)" maxlength="30">
+        <input type="text" id="private-id" class="input-field" placeholder="الرمز">
+        <div class="button-group">
+            <button id="start-btn" disabled>دخول / تسجيل</button>
         </div>
     </div>
 </div>
+
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -75,57 +77,41 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const startBtn = document.getElementById("start-btn");
-    const instaUser = document.getElementById("insta-user");
-    const privateIdInput = document.getElementById("private-id");
-    const validationError = document.getElementById("validation-error");
+    // --- DOM Elements ---
+    const elements = {
+        startBtn: document.getElementById("start-btn"),
+        instaUser: document.getElementById("insta-user"),
+        privateIdInput: document.getElementById("private-id"),
+        validationError: document.getElementById("validation-error"),
+    };
 
+    // --- Authentication ---
     const instaRegex = /^@[a-zA-Z0-9_]{1,30}$/;
     const idRegex = /^[a-zA-Z0-9]{6,}$/;
 
     function validateInputs() {
-        startBtn.disabled = !(instaRegex.test(instaUser.value) && idRegex.test(privateIdInput.value));
+        const user = elements.instaUser.value;
+        const privateId = elements.privateIdInput.value;
+        elements.startBtn.disabled = !(instaRegex.test(user) && idRegex.test(privateId));
     }
+    elements.instaUser.addEventListener('input', validateInputs);
+    elements.privateIdInput.addEventListener('input', validateInputs);
 
-    function loginSuccess(currentUser) {
-        localStorage.setItem('savedMariomaUser', JSON.stringify({ u: currentUser.username, p: currentUser.privateId }));
-        // التوجيه إلى صفحة اللعبة
-        window.location.href = 'game.html';
-    }
-
-    function loadSavedUser(){
-        const savedUserStr = localStorage.getItem('savedMariomaUser');
-        if(savedUserStr){
-            try {
-                const savedUser = JSON.parse(savedUserStr);
-                instaUser.value = savedUser.u;
-                privateIdInput.value = savedUser.p;
-                validateInputs();
-            } catch(e) {
-                localStorage.removeItem('savedMariomaUser');
-            }
-        }
-    }
-    
-    instaUser.addEventListener('input', validateInputs);
-    privateIdInput.addEventListener('input', validateInputs);
-
-    startBtn.onclick = async () => {
-        const username = instaUser.value;
-        const privateId = privateIdInput.value;
-        startBtn.disabled = true;
-        startBtn.textContent = 'جاري التحقق...';
-        validationError.textContent = '';
-
+    elements.startBtn.onclick = async () => {
+        const username = elements.instaUser.value;
+        const privateId = elements.privateIdInput.value;
+        elements.startBtn.disabled = true;
+        elements.startBtn.textContent = 'جاري التحقق...';
+        elements.validationError.textContent = '';
         try {
             const userDocRef = doc(db, "users", username);
             const userDoc = await getDoc(userDocRef);
-
             if (userDoc.exists()) {
-                if (userDoc.data().privateId === privateId) {
-                    loginSuccess({ username, ...userDoc.data() });
+                const userData = userDoc.data();
+                if (userData.privateId === privateId) {
+                    loginSuccess({ username, ...userData });
                 } else {
-                    validationError.textContent = 'الرمز غير صحيح.';
+                    elements.validationError.textContent = 'الرمز غير صحيح.';
                 }
             } else {
                 const newUser = {
@@ -138,16 +124,38 @@
                 loginSuccess(newUser);
             }
         } catch (error) {
-            console.error("Authentication Error: ", error);
-            validationError.textContent = 'حدث خطأ، حاول مرة أخرى.';
+            console.error("Auth Error: ", error);
+            elements.validationError.textContent = 'حدث خطأ، حاول مرة أخرى.';
         } finally {
-            if(validationError.textContent){
-               startBtn.disabled = false;
-               startBtn.textContent = 'دخول / تسجيل';
+            if (elements.validationError.textContent) { // Re-enable button only on error
+                elements.startBtn.disabled = false;
+                elements.startBtn.textContent = 'دخول / تسجيل';
             }
         }
     };
-    
+
+    function loginSuccess(currentUser) {
+        // Save user to local storage for quick access in the game file
+        localStorage.setItem('savedMariomaUser', JSON.stringify({ u: currentUser.username, p: currentUser.privateId }));
+        // Redirect to the game file
+        window.location.href = 'game.html';
+    }
+
+    function loadSavedUser() {
+        const savedUserStr = localStorage.getItem('savedMariomaUser');
+        if (savedUserStr) {
+            try {
+                const savedUser = JSON.parse(savedUserStr);
+                elements.instaUser.value = savedUser.u;
+                elements.privateIdInput.value = savedUser.p;
+                validateInputs();
+            } catch (e) {
+                localStorage.removeItem('savedMariomaUser');
+            }
+        }
+    }
+
+    // --- Initial Load ---
     loadSavedUser();
 </script>
 
