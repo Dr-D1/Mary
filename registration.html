@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>YMY COIN - تسجيل الدخول</title>
+    <style>
+        /* أنماط أساسية لواجهة التسجيل */
+        html, body { height: 100%; margin: 0; font-family: 'Cairo', Arial, sans-serif; }
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            background: #333;
+        }
+        button { cursor: pointer; font-family: inherit; }
+        .page {
+            width: 100%; max-width: 450px;
+            flex-grow: 1;
+            position: relative;
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,.5);
+        }
+        .overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,.7);
+            color: white; z-index: 10; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box;
+        }
+        .overlay button { padding: 15px 30px; font-size: 22px; border: none; border-radius: 10px; background: #ffc107; margin-top: 15px; }
+        #start-screen .button-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center;}
+        #start-screen .button-group button { font-size: 18px; padding: 12px 20px; margin-top: 0; }
+        .input-field { padding: 10px; font-size: 18px; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 10px; text-align: center; direction: ltr; width: 80%; }
+        #start-btn:disabled { background: #999; cursor: not-allowed; }
+        #validation-error { color: #ffc107; font-size: 14px; height: 16px; margin-bottom: 5px; }
+        #game-board { position: relative; flex-grow: 1; background: lightpink; overflow: hidden; }
+    </style>
+</head>
+<body>
+
+<!-- صفحة التسجيل -->
+<div id="registration-page" class="page">
+    <div id="game-board">
+        <div id="start-screen" class="overlay">
+            <h1>إطعام مريومة</h1>
+            <p>سجّل الدخول أو أنشئ حساباً لبدء اللعب</p>
+            <div id="validation-error"></div>
+            <input id="insta-user" class="input-field" placeholder="يوزر الانستغرام (@user)" maxlength="30">
+            <input type="text" id="private-id" class="input-field" placeholder="الرمز">
+            <div class="button-group">
+                <button id="start-btn" disabled>دخول / تسجيل</button>
+            </div>
+            <p style="font-size: 12px; color: #ccc; margin-top: 20px;">
+                ملاحظة: سيتم توجيهك للعبة بعد تسجيل الدخول.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsJ6fm4SFNLnRuHj-b80L0BweGVNkoiIM",
+      authDomain: "game-21f55.firebaseapp.com",
+      projectId: "game-21f55",
+      storageBucket: "game-21f55.firebasestorage.app",
+      messagingSenderId: "88852711134",
+      appId: "1:88852711134:web:c504445d3d800c3e13244f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const startBtn = document.getElementById("start-btn");
+    const instaUser = document.getElementById("insta-user");
+    const privateIdInput = document.getElementById("private-id");
+    const validationError = document.getElementById("validation-error");
+
+    const instaRegex = /^@[a-zA-Z0-9_]{1,30}$/;
+    const idRegex = /^[a-zA-Z0-9]{6,}$/;
+
+    function validateInputs() {
+        startBtn.disabled = !(instaRegex.test(instaUser.value) && idRegex.test(privateIdInput.value));
+    }
+
+    function loginSuccess(currentUser) {
+        localStorage.setItem('savedMariomaUser', JSON.stringify({ u: currentUser.username, p: currentUser.privateId }));
+        // التوجيه إلى صفحة اللعبة
+        window.location.href = 'game.html';
+    }
+
+    function loadSavedUser(){
+        const savedUserStr = localStorage.getItem('savedMariomaUser');
+        if(savedUserStr){
+            try {
+                const savedUser = JSON.parse(savedUserStr);
+                instaUser.value = savedUser.u;
+                privateIdInput.value = savedUser.p;
+                validateInputs();
+            } catch(e) {
+                localStorage.removeItem('savedMariomaUser');
+            }
+        }
+    }
+    
+    instaUser.addEventListener('input', validateInputs);
+    privateIdInput.addEventListener('input', validateInputs);
+
+    startBtn.onclick = async () => {
+        const username = instaUser.value;
+        const privateId = privateIdInput.value;
+        startBtn.disabled = true;
+        startBtn.textContent = 'جاري التحقق...';
+        validationError.textContent = '';
+
+        try {
+            const userDocRef = doc(db, "users", username);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                if (userDoc.data().privateId === privateId) {
+                    loginSuccess({ username, ...userDoc.data() });
+                } else {
+                    validationError.textContent = 'الرمز غير صحيح.';
+                }
+            } else {
+                const newUser = {
+                    username, privateId, highScore: 0, balance: 0,
+                    inventory: {},
+                    equipped: { dress: 'default', background: 'default' },
+                    createdAt: serverTimestamp()
+                };
+                await setDoc(userDocRef, newUser);
+                loginSuccess(newUser);
+            }
+        } catch (error) {
+            console.error("Authentication Error: ", error);
+            validationError.textContent = 'حدث خطأ، حاول مرة أخرى.';
+        } finally {
+            if(validationError.textContent){
+               startBtn.disabled = false;
+               startBtn.textContent = 'دخول / تسجيل';
+            }
+        }
+    };
+    
+    loadSavedUser();
+</script>
+
+</body>
+</html>
