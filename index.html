@@ -52,7 +52,7 @@
         <h1>إطعام مريومة</h1>
         <p>سجّل الدخول أو أنشئ حساباً للمتابعة</p>
         <div id="validation-error"></div>
-        <input id="insta-user" class="input-field" placeholder="يوزر الانستغرام (@user)" maxlength="30">
+        <input id="insta-user" class="input-field" placeholder="يوزر الانستغرام (@user)" maxlength="31">
         <input type="text" id="private-id" class="input-field" placeholder="الرمز">
         <div class="button-group">
             <button id="start-btn" disabled>دخول / تسجيل</button>
@@ -86,7 +86,7 @@
     };
 
     // --- Authentication ---
-    const instaRegex = /^@[a-zA-Z0-9_]{1,30}$/;
+    const instaRegex = /^@[^\u0600-\u06FF]{1,30}$/;
     const idRegex = /^[a-zA-Z0-9]{6,}$/;
 
     function validateInputs() {
